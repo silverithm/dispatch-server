@@ -1,0 +1,70 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+silverithm.trace.db
+silverithm.mv.db
+
+application-local.yaml
+application-prod.yaml
+
+src/main/generated
+
+build/generated
+
+../../campride/.env
+
+
+# Ignore all files in logs directory
+logs/
+
+# Ignore specific files in logs/info and logs/error directories
+logs/info/*
+logs/error/*
+
+# Ignore redis dump file
+src/main/resources/binary/redis/dump.rdb
+
+.env
+
+osrm-data/*
+osrm-data/
+
+
+init-letsencrypt.sh
+
+data
