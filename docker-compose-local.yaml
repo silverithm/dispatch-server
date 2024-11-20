@@ -1,0 +1,53 @@
+services:
+  app:
+    container_name: silverithm-dispatch
+    build: .
+    volumes:
+      - ./logs:/logs
+    ports:
+      - "8081:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'  # 10코어 전체 할당
+    environment:
+      LOG_PATH: /logs
+      SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      JAVA_OPTS: >
+        -XX:MaxRAMPercentage=80.0
+        -XX:InitialRAMPercentage=70.0
+        -XX:+UseG1GC
+        -XX:ParallelGCThreads=10  # 10코어에 맞춤
+        -XX:ConcGCThreads=2
+        -XX:MaxGCPauseMillis=200
+    restart: always
+    networks:
+      - silverithm_network
+    depends_on:
+      - db
+  db:
+    container_name: silverithm-dispatch-db
+    image: mysql:8.3
+    environment:
+      MYSQL_DATABASE: ${MYSQL_NAME}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    restart: always
+    networks:
+      - silverithm_network
+    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+
+
+
+volumes:
+  db-data:
+
+networks:
+  silverithm_network:

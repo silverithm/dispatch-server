@@ -1,7 +1,6 @@
 package com.silverithm.vehicleplacementsystem.jwt;
 
 
-import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -33,7 +32,7 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
 
-        public static final long ACCESS_TOKEN_EXPIRE_TIME = 3 * 24 * 60 * 60 * 1000L;               //3일, 수정필요
+    public static final long ACCESS_TOKEN_EXPIRE_TIME = 3 * 24 * 60 * 60 * 1000L;               //3일, 수정필요
     public static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;     //7일
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String AUTHORITIES_KEY = "auth";
