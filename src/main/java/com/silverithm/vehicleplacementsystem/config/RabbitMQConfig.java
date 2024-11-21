@@ -89,7 +89,7 @@ public class RabbitMQConfig {
     @Bean
     public ConnectionFactory connectionFactory() {
         com.rabbitmq.client.ConnectionFactory rabbitFactory = new com.rabbitmq.client.ConnectionFactory();
-        rabbitFactory.setMaxInboundMessageBodySize(1345270062);
+        rabbitFactory.setMaxInboundMessageBodySize(1545270062);
         rabbitFactory.setHost(host);
         rabbitFactory.setPort(port);
         rabbitFactory.setUsername(username);
