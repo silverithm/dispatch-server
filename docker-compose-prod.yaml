@@ -46,7 +46,7 @@ services:
     networks:
       - silverithm_network
   db:
-    container_name: silverithm_db
+    container_name: silverithm-dispatch-db
     image: mysql:8.3
     environment:
       MYSQL_DATABASE: ${MYSQL_NAME}
@@ -81,7 +81,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'  # 10코어 전체 할당
+          cpus: '4.0'
     environment:
       LOG_PATH: /logs
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
@@ -89,11 +89,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST}
       SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       JAVA_OPTS: >
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
         -XX:+UseG1GC
-        -XX:ParallelGCThreads=10  # 10코어에 맞춤
+        -XX:ParallelGCThreads=10
         -XX:ConcGCThreads=2
         -XX:MaxGCPauseMillis=200
     depends_on:
