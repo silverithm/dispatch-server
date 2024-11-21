@@ -64,19 +64,6 @@ public class DispatchController {
     private RabbitTemplate rabbitTemplate;
 
 
-    @PostMapping("/api/v1/dispatch")
-    public ResponseEntity<List<AssignmentResponseDTO>> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
-
-        try {
-            return ResponseEntity.ok().body(dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO));
-        } catch (Exception e) {
-            sseService.notifyError(requestDispatchDTO.userName());
-            return ResponseEntity.badRequest().build();
-        }
-
-    }
-
-
     @RabbitListener(queues = "dispatch.queue")
     public void handleDispatchRequest(RequestDispatchDTO requestDispatchDTO, Message message, Channel channel)
             throws IOException {
@@ -104,17 +91,6 @@ public class DispatchController {
             ResponseEntity.badRequest().build();
         }
 
-    }
-
-
-    @GetMapping("/api/v1/history")
-    public List<DispatchHistoryDTO> getHistories() {
-        return dispatchHistoryService.getDispatchHistories();
-    }
-
-    @GetMapping("/api/v1/history/{id}")
-    public DispatchHistoryDetailDTO getHistoryDetail(@PathVariable Long id) throws JsonProcessingException {
-        return dispatchHistoryService.getDispatchDetail(id);
     }
 
 
