@@ -65,6 +65,6 @@ osrm-data/*
 osrm-data/
 
 
-init-letsencrypt.sh
+../api-server/init-letsencrypt.sh
 
 data

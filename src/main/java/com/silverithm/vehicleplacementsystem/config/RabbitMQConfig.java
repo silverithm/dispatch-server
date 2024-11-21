@@ -1,6 +1,11 @@
 package com.silverithm.vehicleplacementsystem.config;
 
 
+import com.rabbitmq.client.SslContextFactory;
+import java.io.FileInputStream;
+import java.security.KeyStore;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -88,14 +93,32 @@ public class RabbitMQConfig {
 
     @Bean
     public ConnectionFactory connectionFactory() {
+
         com.rabbitmq.client.ConnectionFactory rabbitFactory = new com.rabbitmq.client.ConnectionFactory();
         rabbitFactory.setMaxInboundMessageBodySize(1545270062);
         rabbitFactory.setHost(host);
         rabbitFactory.setPort(port);
         rabbitFactory.setUsername(username);
         rabbitFactory.setPassword(password);
+        try {
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            keyStore.load(new FileInputStream("/path/to/keystore.p12"), "keystore-password".toCharArray());
+
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
+                    TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init(keyStore);
+
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+
+            rabbitFactory.useSslProtocol(sslContext);
+        } catch (Exception e) {
+            throw new RuntimeException("SSL 설정 실패", e);
+        }
 
         CachingConnectionFactory factory = new CachingConnectionFactory(rabbitFactory);
         return factory;
     }
+
+
 }
