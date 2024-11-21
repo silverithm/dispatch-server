@@ -2,6 +2,8 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.Channel;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDetailDTO;
@@ -13,8 +15,13 @@ import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
 import com.silverithm.vehicleplacementsystem.service.SSEService;
+import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -50,9 +57,15 @@ public class DispatchController {
     @Autowired
     private DispatchHistoryService dispatchHistoryService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+
     @PostMapping("/api/v1/dispatch")
-    public ResponseEntity<List<AssignmentResponseDTO>> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO)
-            throws Exception {
+    public ResponseEntity<List<AssignmentResponseDTO>> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
 
         try {
             return ResponseEntity.ok().body(dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO));
@@ -62,6 +75,37 @@ public class DispatchController {
         }
 
     }
+
+
+    @RabbitListener(queues = "dispatch.queue")
+    public void handleDispatchRequest(RequestDispatchDTO requestDispatchDTO, Message message, Channel channel)
+            throws IOException {
+        log.info("Received message: {}", requestDispatchDTO);
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+
+        try {
+            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
+
+            // 결과 메시지 생성
+            Message responseMessage = MessageBuilder
+                    .withBody(objectMapper.writeValueAsBytes(result))
+                    .setHeader("jobId", message.getMessageProperties().getHeaders().get("jobId"))
+                    .build();
+
+            // 응답 큐로 결과 전송
+            rabbitTemplate.send("dispatch-response-queue", responseMessage);
+
+            // 원본 메시지 ack
+            channel.basicAck(deliveryTag, false);
+        } catch (Exception e) {
+            log.error("배차 요청 처리 중 오류 발생: ", e);
+            channel.basicNack(deliveryTag, false, false);
+            sseService.notifyError(requestDispatchDTO.userName());
+            ResponseEntity.badRequest().build();
+        }
+
+    }
+
 
     @GetMapping("/api/v1/history")
     public List<DispatchHistoryDTO> getHistories() {

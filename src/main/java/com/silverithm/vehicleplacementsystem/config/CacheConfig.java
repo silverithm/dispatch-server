@@ -18,7 +18,7 @@ public class CacheConfig {
     @Bean
     public CacheManager caffeineCacheManager() {
         // Caffeine 캐시 설정
-        CaffeineCache fitnessCache = new CaffeineCache("fitnessCache",
+        CaffeineCache fitnessCache = new CaffeineCache("linkDistanceCache",
                 Caffeine.newBuilder()
                         .maximumSize(10000)      // 최대 캐시 항목 수
                         .expireAfterWrite(5, TimeUnit.MINUTES)  // 캐시 만료 시간

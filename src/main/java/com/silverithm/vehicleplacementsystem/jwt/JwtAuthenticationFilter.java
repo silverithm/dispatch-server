@@ -1,6 +1,5 @@
 package com.silverithm.vehicleplacementsystem.jwt;
 
-import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,12 +17,10 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final RedisUtils redisUtils;
 
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, RedisUtils redisUtils) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;
-        this.redisUtils = redisUtils;
     }
 
 
@@ -39,10 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // 2. validateToken 메서드로 토큰 유효성 검사
             if (token != null && jwtTokenProvider.validateToken(token)) {
-                if (redisUtils.getBlackList(token) == null) {
                     Authentication authentication = jwtTokenProvider.getAuthentication(token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
             }
         } catch (ExpiredJwtException e) {
 

@@ -15,6 +15,10 @@ services:
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       JAVA_OPTS: >
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
@@ -25,6 +29,7 @@ services:
     restart: always
     networks:
       - silverithm_network
+      - shared_network
     depends_on:
       - db
   db:
@@ -51,3 +56,6 @@ volumes:
 
 networks:
   silverithm_network:
+  shared_network:
+    name: rabbitmq_network
+    external: true

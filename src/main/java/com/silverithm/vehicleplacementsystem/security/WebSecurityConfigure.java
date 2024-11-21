@@ -1,6 +1,5 @@
 package com.silverithm.vehicleplacementsystem.security;
 
-import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.jwt.JwtAuthenticationFilter;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
@@ -39,8 +38,6 @@ public class WebSecurityConfigure {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
-    @Autowired
-    private RedisUtils redisUtils;
 
     @Autowired
     private UserRepository userRepository;
@@ -106,7 +103,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()
-                ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
+                ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

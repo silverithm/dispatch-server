@@ -5,11 +5,13 @@ import com.silverithm.vehicleplacementsystem.repository.EmitterRepository;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SSEService {
     // 기본 타임아웃 설정
     private static final Long DEFAULT_TIMEOUT = 60L * 1000 * 60 * 5;
@@ -24,7 +26,6 @@ public class SSEService {
      */
     public SseEmitter subscribe(String userName) {
         SseEmitter emitter = createEmitter(userName);
-
         sendToClient(userName, "EventStream Created. [userId=" + userName + "]");
         return emitter;
     }
@@ -37,7 +38,6 @@ public class SSEService {
      */
     public void notify(String userName, Object event) {
         sendToClient(userName, event);
-
     }
 
     public void notifyResult(String userName, List<AssignmentResponseDTO> event) {
@@ -82,7 +82,7 @@ public class SSEService {
         SseEmitter emitter = emitterRepository.get(userName);
         if (emitter != null) {
             try {
-                emitter.send(SseEmitter.event().id(String.valueOf(userName)).name("error").data("dispatch error"));
+                emitter.send(SseEmitter.event().id(String.valueOf(userName)).name("dispatch-error").data("dispatch error"));
             } catch (IOException exception) {
                 emitterRepository.deleteById(userName);
                 emitter.completeWithError(exception);

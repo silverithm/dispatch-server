@@ -1,6 +1,5 @@
 package com.silverithm.vehicleplacementsystem.service;
 
-import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
@@ -46,8 +45,6 @@ public class UserService {
     private JwtTokenProvider jwtTokenProvider;
     @Autowired
     private UserRepository userRepository;
-    @Autowired
-    private RedisUtils redisUtils;
 
     @Autowired
     private GeocodingService geocodingService;
@@ -129,11 +126,6 @@ public class UserService {
         String userEmail = claims.getSubject();
         long time = claims.getExpiration().getTime() - System.currentTimeMillis();
 
-        //Access Token blacklist에 등록하여 만료시키기
-        //해당 엑세스 토큰의 남은 유효시간을 얻음
-        redisUtils.setBlackList(accessToken, userEmail, time);
-        //DB에 저장된 Refresh Token 제거
-//        refreshTokenRepository.deleteById(userEmail);
 
         AppUser findUser = userRepository.findByUsername(userEmail);
         findUser.updateRefreshToken(null);
