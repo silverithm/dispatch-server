@@ -20,9 +20,11 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,6 +65,10 @@ public class DispatchController {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    @Qualifier("responseQueue")
+    @Autowired
+    private Queue responseQueue;
+
 
     @RabbitListener(queues = "dispatch.queue")
     public void handleDispatchRequest(RequestDispatchDTO requestDispatchDTO, Message message, Channel channel)
@@ -80,13 +86,10 @@ public class DispatchController {
                     .build();
 
             // 응답 큐로 결과 전송
-            rabbitTemplate.send("dispatch-response-queue", responseMessage);
+            rabbitTemplate.send(responseQueue.getName(), responseMessage);
 
-            // 원본 메시지 ack
-            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("배차 요청 처리 중 오류 발생: ", e);
-            channel.basicNack(deliveryTag, false, false);
             sseService.notifyError(requestDispatchDTO.userName());
             ResponseEntity.badRequest().build();
         }
