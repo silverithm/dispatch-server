@@ -9,7 +9,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'  # 10코어 전체 할당
+          cpus: '4.0'
     environment:
       LOG_PATH: /logs
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
@@ -23,7 +23,7 @@ services:
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
         -XX:+UseG1GC
-        -XX:ParallelGCThreads=10  # 10코어에 맞춤
+        -XX:ParallelGCThreads=10
         -XX:ConcGCThreads=2
         -XX:MaxGCPauseMillis=200
     restart: always
