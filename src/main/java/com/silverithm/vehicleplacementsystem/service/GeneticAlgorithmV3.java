@@ -68,17 +68,17 @@ public class GeneticAlgorithmV3 {
     }
 
 
-    public List<ChromosomeV3> run() throws Exception {
+    public List<ChromosomeV3> run(String jobId) throws Exception {
         // 초기 솔루션 생성
         List<ChromosomeV3> chromosomes;
         try {
 
             chromosomes = generateInitialPopulation(fixedAssignments);
-            sseService.notify(userName, 20);
+            sseService.notify(jobId, 20);
 
             for (int i = 0; i < MAX_ITERATIONS; i++) {
 
-                sseService.notify(userName, String.format("%.1f", 20 + ((i / (double) MAX_ITERATIONS) * 60)));
+                sseService.notify(jobId, String.format("%.1f", 20 + ((i / (double) MAX_ITERATIONS) * 60)));
 
                 // 평가
                 evaluatePopulation(chromosomes);

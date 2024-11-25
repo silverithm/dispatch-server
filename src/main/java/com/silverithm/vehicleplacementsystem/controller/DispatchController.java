@@ -75,14 +75,15 @@ public class DispatchController {
             throws IOException {
         log.info("Received message: {}", requestDispatchDTO);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
 
         try {
-            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
+            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO,jobId);
 
             // 결과 메시지 생성
             Message responseMessage = MessageBuilder
                     .withBody(objectMapper.writeValueAsBytes(result))
-                    .setHeader("jobId", message.getMessageProperties().getHeaders().get("jobId"))
+                    .setHeader("jobId", jobId)
                     .build();
 
             // 응답 큐로 결과 전송
@@ -90,7 +91,7 @@ public class DispatchController {
 
         } catch (Exception e) {
             log.error("배차 요청 처리 중 오류 발생: ", e);
-            sseService.notifyError(requestDispatchDTO.userName());
+            sseService.notifyError(jobId);
             ResponseEntity.badRequest().build();
         }
 

@@ -164,7 +164,8 @@ public class DispatchServiceV3 {
                 Integer.parseInt(durationString));
     }
 
-    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
+    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO, String jobId)
+            throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
@@ -172,12 +173,12 @@ public class DispatchServiceV3 {
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
 
-        sseService.notify(requestDispatchDTO.userName(), 5);
+        sseService.notify(jobId, 5);
 
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company,
                 requestDispatchDTO.dispatchType());
-        sseService.notify(requestDispatchDTO.userName(), 15);
+        sseService.notify(jobId, 15);
 
         // 유전 알고리즘 실행
         GeneticAlgorithmV3 geneticAlgorithm = new GeneticAlgorithmV3(employees, elderlys,
@@ -186,12 +187,12 @@ public class DispatchServiceV3 {
                 sseService);
         geneticAlgorithm.initialize(distanceMatrix, requestDispatchDTO.dispatchType(), requestDispatchDTO.userName());
 
-        List<ChromosomeV3> chromosomes = geneticAlgorithm.run();
+        List<ChromosomeV3> chromosomes = geneticAlgorithm.run(jobId);
         // 최적의 솔루션 추출
         ChromosomeV3 bestChromosome = chromosomes.get(0);
 
         List<Double> departureTimes = bestChromosome.getDepartureTimes();
-        sseService.notify(requestDispatchDTO.userName(), 95);
+        sseService.notify(jobId, 95);
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
@@ -203,7 +204,7 @@ public class DispatchServiceV3 {
 
         log.info(assignmentResponseDTOS.toString());
 
-        sseService.notify(requestDispatchDTO.userName(), 100);
+        sseService.notify(jobId, 100);
         sseService.notifyResult(requestDispatchDTO.userName(), assignmentResponseDTOS);
 
         return assignmentResponseDTOS;
