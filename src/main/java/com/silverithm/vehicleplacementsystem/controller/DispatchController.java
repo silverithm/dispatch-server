@@ -76,6 +76,7 @@ public class DispatchController {
         log.info("Received message: {}", requestDispatchDTO);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
+        log.info(jobId);
 
         try {
             List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO,jobId);
