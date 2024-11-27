@@ -69,7 +69,9 @@ public class ChromosomeV3 implements Serializable {
         for (int i = 0; i < genes.length; i++) {
             int validCount = 0;
             for (int value : genes[i]) {
-                if (value != -1) validCount++;
+                if (value != -1) {
+                    validCount++;
+                }
             }
 
             if (validCount < genes[i].length) {
@@ -150,6 +152,12 @@ public class ChromosomeV3 implements Serializable {
         }
 
         for (CoupleRequestDTO couple : coupleElderlyList) {
+
+            if (!elderlyIdToIndex.containsKey(couple.elderId1()) ||
+                    !elderlyIdToIndex.containsKey(couple.elderId2())) {
+                continue;
+            }
+
             boolean assigned = false;
 
             List<Integer> employees = IntStream.range(0, employeesCapacityLeft.length)
