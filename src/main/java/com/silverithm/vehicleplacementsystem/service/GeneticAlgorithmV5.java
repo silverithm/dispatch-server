@@ -78,7 +78,7 @@ public class GeneticAlgorithmV5 {
 
             for (int i = 0; i < MAX_ITERATIONS; i++) {
 
-                sseService.notify(userName, String.format("%.1f", 20 + ((i / (double) MAX_ITERATIONS) * 60)));
+                sseService.notify(userName, String.format("%.1f", 20 + ((i / (double) MAX_ITERATIONS) * 75)));
 
                 // 평가
                 evaluatePopulation(chromosomes);

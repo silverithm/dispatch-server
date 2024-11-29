@@ -252,7 +252,9 @@ public class DispatchServiceV5 {
         // Elderly to Elderly connections
         for (int i = 0; i < elderlys.size(); i++) {
             for (int j = 0; j < elderlys.size(); j++) {
-                if (i == j) continue;
+                if (i == j) {
+                    continue;
+                }
 
                 ElderlyDTO elderly1 = elderlys.get(i);
                 ElderlyDTO elderly2 = elderlys.get(j);
@@ -280,7 +282,8 @@ public class DispatchServiceV5 {
         return distanceMatrix;
     }
 
-    private Map<String, Map<String, Integer>> initializeDistanceMatrix(List<EmployeeDTO> employees, List<ElderlyDTO> elderlys) {
+    private Map<String, Map<String, Integer>> initializeDistanceMatrix(List<EmployeeDTO> employees,
+                                                                       List<ElderlyDTO> elderlys) {
         int expectedSize = 1 + employees.size() + elderlys.size(); // Company + Employees + Elderlies
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>(expectedSize);
         StringBuilder idBuilder = new StringBuilder(32);
@@ -308,7 +311,8 @@ public class DispatchServiceV5 {
         return builder.append(ELDERLY_PREFIX).append(id).toString();
     }
 
-    private record Distance(int duration, int distance) {}
+    private record Distance(int duration, int distance) {
+    }
 
     private Distance getDistance(String startNodeId, String endNodeId, Location startAddress, Location endAddress) {
         Optional<LinkDistance> linkDistance = linkDistanceRepository
