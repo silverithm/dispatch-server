@@ -177,7 +177,7 @@ public class DispatchServiceV3 {
 
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company,
-                requestDispatchDTO.dispatchType());
+                requestDispatchDTO.dispatchType(),jobId);
         sseService.notify(jobId, 15);
 
         // 유전 알고리즘 실행
@@ -235,7 +235,7 @@ public class DispatchServiceV3 {
 
     private Map<String, Map<String, Integer>> calculateDistanceMatrix(List<EmployeeDTO> employees,
                                                                       List<ElderlyDTO> elderlys,
-                                                                      CompanyDTO company, DispatchType dispatchType) {
+                                                                      CompanyDTO company, DispatchType dispatchType, String jobId) {
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
 
         distanceMatrix.put("Company", new HashMap<>());
@@ -248,6 +248,9 @@ public class DispatchServiceV3 {
             distanceMatrix.put("Elderly_" + elderly.id(), new HashMap<>());
         }
 
+        sseService.notify(jobId,7.5);
+
+
         for (int i = 0; i < elderlys.size(); i++) {
 
             String startNodeId = "Company";
@@ -255,7 +258,6 @@ public class DispatchServiceV3 {
 
             Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
                     startNodeId, destinationNodeId);
-
             if (linkDistance.isPresent()) {
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
@@ -292,7 +294,7 @@ public class DispatchServiceV3 {
 
 
         }
-
+        sseService.notify(jobId,10);
         for (int i = 0; i < elderlys.size(); i++) {
             for (int j = 0; j < elderlys.size(); j++) {
                 if (i == j) {
@@ -343,7 +345,7 @@ public class DispatchServiceV3 {
             }
 
         }
-
+        sseService.notify(jobId,12.5);
         for (int i = 0; i < employees.size(); i++) {
             for (int j = 0; j < elderlys.size(); j++) {
 
@@ -391,6 +393,7 @@ public class DispatchServiceV3 {
             }
 
         }
+        sseService.notify(jobId,15);
 
         return distanceMatrix;
     }
