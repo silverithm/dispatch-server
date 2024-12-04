@@ -1,13 +1,8 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
-import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDTO;
-import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDetailDTO;
-import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.service.DispatchHistoryService;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
@@ -26,12 +21,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -76,15 +65,16 @@ public class DispatchController {
         log.info("Received message: {}", requestDispatchDTO);
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
-        log.info(jobId);
+        String username = message.getMessageProperties().getHeaders().get("username").toString();
 
         try {
-            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO,jobId);
+            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO, jobId);
 
             // 결과 메시지 생성
             Message responseMessage = MessageBuilder
                     .withBody(objectMapper.writeValueAsBytes(result))
                     .setHeader("jobId", jobId)
+                    .setHeader("username", username)
                     .build();
 
             // 응답 큐로 결과 전송
