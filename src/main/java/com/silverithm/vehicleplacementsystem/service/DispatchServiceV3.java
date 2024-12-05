@@ -237,7 +237,8 @@ public class DispatchServiceV3 {
                                                                       List<ElderlyDTO> elderlys,
                                                                       CompanyDTO company, DispatchType dispatchType, String jobId) {
 
-        log.info("jobId : " + jobId + " / "  + "calculateDistanceMatrix start");
+        long startTime = System.currentTimeMillis();
+        log.info("jobId : {} / calculateDistanceMatrix start", jobId);
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
 
         distanceMatrix.put("Company", new HashMap<>());
@@ -258,21 +259,21 @@ public class DispatchServiceV3 {
             String startNodeId = "Company";
             String destinationNodeId = "Elderly_" + elderlys.get(i).id();
 
-//            Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
-//                    startNodeId, destinationNodeId);
-//            if (linkDistance.isPresent()) {
-//
-//                if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-//                    distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
-//                    distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
-//                }
-//
-//                if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-//                    distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
-//                    distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
-//                }
-//
-//            } else {
+            Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                    startNodeId, destinationNodeId);
+            if (linkDistance.isPresent()) {
+
+                if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
+                }
+
+                if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
+                }
+
+            } else {
                 OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(company.companyAddress(),
                         elderlys.get(i).homeAddress());
 
@@ -292,7 +293,7 @@ public class DispatchServiceV3 {
                 linkDistanceRepository.save(
                         new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
                                 osrmApiResponseDTO.distance()));
-//            }
+            }
 
 
         }
@@ -306,22 +307,22 @@ public class DispatchServiceV3 {
                 String startNodeId = "Elderly_" + elderlys.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-//                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
-//                        startNodeId, destinationNodeId);
-//
-//                if (linkDistance.isPresent()) {
-//
-//                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-//                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
-//                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
-//                    }
-//
-//                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-//                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
-//                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
-//                    }
-//
-//                } else {
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                        startNodeId, destinationNodeId);
+
+                if (linkDistance.isPresent()) {
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
+                    }
+
+                } else {
                     OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             elderlys.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
@@ -342,7 +343,7 @@ public class DispatchServiceV3 {
                     linkDistanceRepository.save(
                             new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
                                     osrmApiResponseDTO.distance()));
-//                }
+                }
 
             }
 
@@ -354,22 +355,22 @@ public class DispatchServiceV3 {
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-//                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
-//                        startNodeId, destinationNodeId);
-//
-//                if (linkDistance.isPresent()) {
-//
-//                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-//                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
-//                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
-//                    }
-//
-//                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-//                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
-//                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
-//                    }
-//
-//                } else {
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                        startNodeId, destinationNodeId);
+
+                if (linkDistance.isPresent()) {
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalDistance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalDistance());
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, linkDistance.get().getTotalTime());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, linkDistance.get().getTotalTime());
+                    }
+
+                } else {
 
                     OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             employees.get(i).homeAddress(),
@@ -391,14 +392,16 @@ public class DispatchServiceV3 {
                     linkDistanceRepository.save(
                             new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
                                     osrmApiResponseDTO.distance()));
-//                }
+                }
             }
 
         }
         sseService.notify(jobId,15);
 
-        log.info("jobId : " + jobId + " / "  + "calculateDistanceMatrix end");
-
+        long endTime = System.currentTimeMillis();
+        log.info("jobId : {} / calculateDistanceMatrix end / execution time : {}ms",
+                jobId,
+                endTime - startTime);
         return distanceMatrix;
     }
 
