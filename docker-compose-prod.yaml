@@ -65,6 +65,8 @@ services:
   redis:
     container_name: silverithm_redis
     image: redis
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+    mem_limit: 2.5gb
     ports:
       - "6379:6379"
     restart: always
