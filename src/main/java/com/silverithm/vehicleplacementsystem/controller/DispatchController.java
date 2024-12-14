@@ -69,15 +69,16 @@ public class DispatchController {
             throws IOException {
         log.info("Received message: {}", requestDispatchDTO);
 
-        if (isCpuUsageHigh()) {
-            throw new CustomException("CPU 사용량이 높아 배차 처리를 중단합니다.", HttpStatus.SERVICE_UNAVAILABLE);
-        }
-
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
         String username = message.getMessageProperties().getHeaders().get("username").toString();
 
         try {
+
+            if (isCpuUsageHigh()) {
+                throw new CustomException("CPU 사용량이 높아 배차 처리를 중단합니다.", HttpStatus.SERVICE_UNAVAILABLE);
+            }
+
             List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO, jobId);
 
             // 결과 메시지 생성
