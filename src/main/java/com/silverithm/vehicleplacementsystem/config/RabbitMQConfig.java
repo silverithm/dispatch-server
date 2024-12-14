@@ -1,11 +1,5 @@
 package com.silverithm.vehicleplacementsystem.config;
 
-
-import com.rabbitmq.client.SslContextFactory;
-import java.io.FileInputStream;
-import java.security.KeyStore;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -107,6 +101,7 @@ public class RabbitMQConfig {
     @Bean
     public ConnectionFactory connectionFactory() {
 
+
         com.rabbitmq.client.ConnectionFactory rabbitFactory = new com.rabbitmq.client.ConnectionFactory();
         rabbitFactory.setMaxInboundMessageBodySize(1545270062);
         rabbitFactory.setHost(host);
@@ -117,6 +112,8 @@ public class RabbitMQConfig {
         CachingConnectionFactory factory = new CachingConnectionFactory(rabbitFactory);
         return factory;
     }
+
+
 
 
 }

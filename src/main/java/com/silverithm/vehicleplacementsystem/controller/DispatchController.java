@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.service.DispatchHistoryService;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
@@ -11,6 +12,8 @@ import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
 import com.silverithm.vehicleplacementsystem.service.SSEService;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -20,6 +23,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -58,11 +62,17 @@ public class DispatchController {
     @Autowired
     private Queue responseQueue;
 
+    private static final double CPU_THRESHOLD = 80.0;
 
     @RabbitListener(queues = "dispatch.queue")
     public void handleDispatchRequest(RequestDispatchDTO requestDispatchDTO, Message message, Channel channel)
             throws IOException {
         log.info("Received message: {}", requestDispatchDTO);
+
+        if (isCpuUsageHigh()) {
+            throw new CustomException("CPU 사용량이 높아 배차 처리를 중단합니다.", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
         String username = message.getMessageProperties().getHeaders().get("username").toString();
@@ -86,6 +96,18 @@ public class DispatchController {
             ResponseEntity.badRequest().build();
         }
 
+    }
+
+    private boolean isCpuUsageHigh() {
+        OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+        if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+            com.sun.management.OperatingSystemMXBean sunOsBean =
+                    (com.sun.management.OperatingSystemMXBean) osBean;
+            double cpuLoad = sunOsBean.getCpuLoad() * 100;
+            log.info("Current CPU Usage: {}%", cpuLoad);
+            return cpuLoad >= CPU_THRESHOLD;
+        }
+        return false;
     }
 
 
