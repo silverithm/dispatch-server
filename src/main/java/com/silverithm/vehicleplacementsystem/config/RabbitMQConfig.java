@@ -11,6 +11,7 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -85,6 +86,18 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setConcurrentConsumers(3);  // 동시 처리할 Consumer 수
+        factory.setMaxConcurrentConsumers(5);  // 최대 Consumer 수
+        factory.setPrefetchCount(3);  // 한 번에 가져올 메시지 수
+        factory.setMessageConverter(jsonMessageConverter());
+
+        return factory;
+    }
+
+    @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter());
@@ -100,21 +113,6 @@ public class RabbitMQConfig {
         rabbitFactory.setPort(port);
         rabbitFactory.setUsername(username);
         rabbitFactory.setPassword(password);
-//        try {
-//            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-//            keyStore.load(new FileInputStream("/path/to/keystore.p12"), "keystore-password".toCharArray());
-//
-//            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
-//                    TrustManagerFactory.getDefaultAlgorithm());
-//            trustManagerFactory.init(keyStore);
-//
-//            SSLContext sslContext = SSLContext.getInstance("TLS");
-//            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
-//
-//            rabbitFactory.useSslProtocol(sslContext);
-//        } catch (Exception e) {
-//            throw new RuntimeException("SSL 설정 실패", e);
-//        }
 
         CachingConnectionFactory factory = new CachingConnectionFactory(rabbitFactory);
         return factory;
