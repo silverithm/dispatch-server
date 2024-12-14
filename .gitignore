@@ -39,6 +39,7 @@ out/
 silverithm.trace.db
 silverithm.mv.db
 
+application.yaml
 application-local.yaml
 application-prod.yaml
 
@@ -68,3 +69,4 @@ osrm-data/
 ../api-server/init-letsencrypt.sh
 
 data
+
