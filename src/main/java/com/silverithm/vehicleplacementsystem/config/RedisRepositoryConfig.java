@@ -74,8 +74,7 @@ public class RedisRepositoryConfig {
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .prefixCacheNameWith("cache:")
-                .entryTtl(Duration.ofMinutes(30));
+                .prefixCacheNameWith("cache:");
 
         // 캐시 설정 추가
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
