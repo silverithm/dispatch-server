@@ -60,8 +60,7 @@ public class AppUser {
         this.companyAddressName = companyAddressName;
     }
 
-    public void update(String accessToken, String refreshToken) {
-        this.accessToken = accessToken;
+    public void update(String refreshToken) {
         this.refreshToken = refreshToken;
     }
 

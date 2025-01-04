@@ -77,7 +77,7 @@ public class UserService {
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
 
-            findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
+            findUser.update(tokenInfo.getRefreshToken());
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(), findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
                     tokenInfo);
