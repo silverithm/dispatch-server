@@ -74,12 +74,13 @@ public class RedisRepositoryConfig {
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .prefixCacheNameWith("cache:");
+                .prefixCacheNameWith("cache:")
+                .entryTtl(Duration.ZERO);
 
         // 캐시 설정 추가
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         cacheConfigurations.put("fitness", configuration);
-        cacheConfigurations.put("osrm",configuration);
+        cacheConfigurations.put("osrm", configuration);
 
         return RedisCacheManager.builder(redisConnectionFactory())
                 .cacheDefaults(configuration)
