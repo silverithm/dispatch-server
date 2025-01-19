@@ -537,7 +537,7 @@ public class DispatchServiceV3 {
                                                                       String jobId) {
 
         long startTime = System.currentTimeMillis();
-        log.info("jobId : {} / calculateDistanceMatrix start", jobId);
+//        log.info("jobId : {} / calculateDistanceMatrix start", jobId);
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
 
         distanceMatrix.put("Company", new HashMap<>());
@@ -575,8 +575,8 @@ public class DispatchServiceV3 {
             OsrmApiResponseDTO osrmApiResponseDTO = osrmService.getDistanceTotalTimeWithOsrmApi(
                     company.companyAddress(),
                     elderlys.get(i).homeAddress());
-            log.info("{} : {} / {}", company, elderlys.get(i).homeAddressName(),
-                    osrmApiResponseDTO.toString());
+//            log.info("{} : {} / {}", company, elderlys.get(i).homeAddressName(),
+//                    osrmApiResponseDTO.toString());
 
             if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                 distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
@@ -627,8 +627,8 @@ public class DispatchServiceV3 {
                         elderlys.get(i).homeAddress(),
                         elderlys.get(j).homeAddress());
 
-                log.info("{} : {} / {}", elderlys.get(i).homeAddressName(), elderlys.get(j).homeAddressName(),
-                        osrmApiResponseDTO.toString());
+//                log.info("{} : {} / {}", elderlys.get(i).homeAddressName(), elderlys.get(j).homeAddressName(),
+//                        osrmApiResponseDTO.toString());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                     distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
@@ -679,8 +679,8 @@ public class DispatchServiceV3 {
                         employees.get(i).homeAddress(),
                         elderlys.get(j).homeAddress());
 
-                log.info("{} : {} / {}", employees.get(i).homeAddressName(), elderlys.get(j).homeAddressName(),
-                        osrmApiResponseDTO.toString());
+//                log.info("{} : {} / {}", employees.get(i).homeAddressName(), elderlys.get(j).homeAddressName(),
+//                        osrmApiResponseDTO.toString());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                     distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
