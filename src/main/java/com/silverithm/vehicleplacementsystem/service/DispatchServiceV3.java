@@ -203,7 +203,9 @@ public class DispatchServiceV3 {
                     .min(Comparator.comparingInt(driverAssignedCounts::get))
                     .orElse(null);
 
-            if (currentDriver == null) break;
+            if (currentDriver == null) {
+                break;
+            }
 
             int totalDriverTime = driverTotalTimes.get(currentDriver);
             int currentAssignedCount = driverAssignedCounts.get(currentDriver);
@@ -322,13 +324,16 @@ public class DispatchServiceV3 {
 
         return nearestIndex;
     }
+
     private int calculateTotalRouteTime(
             List<Integer> route,
             Map<String, Map<String, Integer>> distanceMatrix,
             List<ElderlyDTO> elderlys,
             CompanyDTO company
     ) {
-        if (route.isEmpty()) return 0;
+        if (route.isEmpty()) {
+            return 0;
+        }
 
         int totalTime = 0;
         String currentLocation = "Company";
@@ -389,6 +394,7 @@ public class DispatchServiceV3 {
             to--;
         }
     }
+
     public List<AssignmentResponseDTO> getOptimizedAssignmentsV2(RequestDispatchDTO requestDispatchDTO, String jobId)
             throws Exception {
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
@@ -421,7 +427,9 @@ public class DispatchServiceV3 {
             Map<Integer, List<Integer>> driverRoutes = new HashMap<>();
             for (int i = 0; i < clusterGenes.length; i++) {
                 int driverIndex = i / 2;  // 각 운전원에게 연속으로 2개씩 배정
-                if (driverIndex >= driverCount) break;
+                if (driverIndex >= driverCount) {
+                    break;
+                }
 
                 driverRoutes.computeIfAbsent(driverIndex, k -> new ArrayList<>())
                         .add(i);
@@ -493,14 +501,11 @@ public class DispatchServiceV3 {
         }
 
         sseService.notify(jobId, 95);
-        dispatchHistoryService.saveDispatchResult(results);
-
         sseService.notify(jobId, 100);
         sseService.notifyResult(jobId, results);
 
         return results;
     }
-
 
 
     private List<AssignmentResponseDTO> createResult(List<EmployeeDTO> employees,
@@ -521,7 +526,7 @@ public class DispatchServiceV3 {
                     new AssignmentResponseDTO(dispatchType, employees.get(i).id(), employees.get(i).homeAddress(),
                             employees.get(i).workplace(),
                             employees.get(i).name(),
-                            (int) (departureTimes.get(i) - 0), assignmentElders));
+                            (int) (departureTimes.get(i) - 0), assignmentElders, employees.get(i).isDriver()));
         }
         return assignmentResponseDTOS;
     }

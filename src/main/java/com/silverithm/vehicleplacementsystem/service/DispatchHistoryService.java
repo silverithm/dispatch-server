@@ -40,12 +40,6 @@ public class DispatchHistoryService {
         repository.save(dispatchHistory);
     }
 
-    public List<DispatchHistoryDTO> getDispatchHistories() {
-        return repository.findAllByOrderByCreatedAtDesc()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
 
     private DispatchHistoryDTO convertToDTO(DispatchHistory dispatchHistory) {
 
