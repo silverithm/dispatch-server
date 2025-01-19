@@ -54,6 +54,10 @@ public class ChromosomeV3 implements Serializable {
 
     }
 
+    public ChromosomeV3(int[][] genes) {
+        this.genes = genes;
+    }
+
     public int[] initializeEmployeesCapacityLeft(List<EmployeeDTO> employees) {
 
         int[] employeesCapacityLeft = new int[employees.size()];

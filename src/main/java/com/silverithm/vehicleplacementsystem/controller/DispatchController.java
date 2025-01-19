@@ -79,7 +79,7 @@ public class DispatchController {
                 throw new CustomException("CPU 사용량이 높아 배차 처리를 중단합니다.", HttpStatus.SERVICE_UNAVAILABLE);
             }
 
-            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO, jobId);
+            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignmentsV2(requestDispatchDTO, jobId);
 
             // 결과 메시지 생성
             Message responseMessage = MessageBuilder

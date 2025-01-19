@@ -4,9 +4,9 @@ import { check, sleep } from 'k6';
 export const options = {
     stages: [
         { duration: '30s', target: 100 },   // 빠른 램프업
-        { duration: '1m', target: 200 },    // 부하 증가
-        { duration: '2m', target: 300 },    // 피크 부하
-        { duration: '1m', target: 100 },    // 감소
+        { duration: '1m', target: 2000 },    // 부하 증가
+        { duration: '2m', target: 5000 },    // 피크 부하
+        { duration: '1m', target: 2000 },    // 감소
         { duration: '30s', target: 0 }      // 정리
     ],
     thresholds: {
