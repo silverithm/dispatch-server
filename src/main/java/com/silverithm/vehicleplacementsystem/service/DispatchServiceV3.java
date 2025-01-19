@@ -1,7 +1,5 @@
 package com.silverithm.vehicleplacementsystem.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
@@ -15,7 +13,6 @@ import com.silverithm.vehicleplacementsystem.dto.OsrmApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.ChromosomeV3;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
-import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,12 +21,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -168,7 +163,8 @@ public class DispatchServiceV3 {
             List<EmployeeDTO> employees,
             List<ElderlyDTO> elderlys,
             Map<String, Map<String, Integer>> distanceMatrix,
-            CompanyDTO company
+            CompanyDTO company,
+            RequestDispatchDTO requestDispatchDTO
     ) {
         List<EmployeeDTO> drivers = employees.stream()
                 .filter(EmployeeDTO::isDriver)
@@ -178,7 +174,9 @@ public class DispatchServiceV3 {
             return null;
         }
 
-        int TIME_LIMIT = 3000; // 1시간
+        int TIME_LIMIT = requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_IN
+                || requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_OUT ? 50000 : 3600;
+
         Map<EmployeeDTO, Integer> driverTotalTimes = new HashMap<>();
         Map<EmployeeDTO, Integer> driverAssignedCounts = new HashMap<>();
         drivers.forEach(driver -> {
@@ -189,7 +187,6 @@ public class DispatchServiceV3 {
         Set<Integer> assignedElderlyIndices = new HashSet<>();
         List<List<Integer>> allRoutes = new ArrayList<>();
 
-        // 전체 어르신 수를 기반으로 운전원당 목표 인원 계산
         int targetElderlyPerDriver = (int) Math.ceil((double) elderlys.size() / drivers.size());
         log.info("Target elderly per driver: {}", targetElderlyPerDriver);
 
@@ -197,20 +194,19 @@ public class DispatchServiceV3 {
         while (canAssignMore && assignedElderlyIndices.size() < elderlys.size()) {
             canAssignMore = false;
 
-            // 가장 적은 수의 어르신이 배정된 운전원 선택
+            // 가장 적은 수의 어르신이 배정된 운전원을 우선 선택하고, 같은 수일 경우 누적 시간이 적은 운전원 선택
             EmployeeDTO currentDriver = drivers.stream()
                     .filter(d -> driverTotalTimes.get(d) < TIME_LIMIT)
-                    .min(Comparator.comparingInt(driverAssignedCounts::get))
+                    .min(Comparator
+                            .<EmployeeDTO>comparingInt(d -> driverAssignedCounts.get(d))
+                            .thenComparingInt(d -> driverTotalTimes.get(d)))
                     .orElse(null);
 
-            if (currentDriver == null) {
-                break;
-            }
+            if (currentDriver == null) break;
 
             int totalDriverTime = driverTotalTimes.get(currentDriver);
             int currentAssignedCount = driverAssignedCounts.get(currentDriver);
 
-            // 이 운전원이 목표 인원에 도달했는지 확인
             if (currentAssignedCount >= targetElderlyPerDriver) {
                 continue;
             }
@@ -218,7 +214,6 @@ public class DispatchServiceV3 {
             log.info("Processing driver {} (current count: {}, total time: {}s)",
                     currentDriver.id(), currentAssignedCount, totalDriverTime);
 
-            // 아직 배정되지 않은 어르신들 수집
             List<Integer> unassignedElderlys = new ArrayList<>();
             for (int j = 0; j < elderlys.size(); j++) {
                 if (!assignedElderlyIndices.contains(j)) {
@@ -227,15 +222,21 @@ public class DispatchServiceV3 {
             }
 
             if (!unassignedElderlys.isEmpty()) {
+                // 남은 운전원과 어르신 수를 고려하여 이번 운행의 최대 수용 인원 계산
+                int availableDrivers = (int) drivers.stream()
+                        .filter(d -> driverTotalTimes.get(d) < TIME_LIMIT)
+                        .count();
+
+                int averageRemaining = (int) Math.ceil((double) unassignedElderlys.size() / availableDrivers);
+                int tripCapacity = Math.min(
+                        Math.min(currentDriver.maximumCapacity(), targetElderlyPerDriver - currentAssignedCount),
+                        Math.max(1, averageRemaining)
+                );
+
                 List<Integer> currentTrip = new ArrayList<>();
                 String currentLocation = "Company";
                 int routeTime = 0;
-                int tripCapacity = Math.min(
-                        currentDriver.maximumCapacity(),
-                        targetElderlyPerDriver - currentAssignedCount
-                );
 
-                // 가장 가까운 어르신부터 배정
                 while (!unassignedElderlys.isEmpty() && currentTrip.size() < tripCapacity) {
                     int nearestIndex = findNearestElderly(
                             currentLocation,
@@ -265,10 +266,8 @@ public class DispatchServiceV3 {
                 }
 
                 if (!currentTrip.isEmpty()) {
-                    // 회사로 돌아오는 시간 추가
                     routeTime += distanceMatrix.get(currentLocation).get("Company");
 
-                    // 배정 정보 업데이트
                     currentTrip.forEach(assignedElderlyIndices::add);
                     driverTotalTimes.put(currentDriver, totalDriverTime + routeTime);
                     driverAssignedCounts.merge(currentDriver, currentTrip.size(), Integer::sum);
@@ -284,7 +283,6 @@ public class DispatchServiceV3 {
             }
         }
 
-        // 최종 배정 결과 로깅
         log.info("Clustering completed with {} routes", allRoutes.size());
         drivers.forEach(driver ->
                 log.info("Driver {} final stats - Count: {}, Time: {}m {}s",
@@ -412,7 +410,7 @@ public class DispatchServiceV3 {
         sseService.notify(jobId, 15);
 
         int[][] clusterGenes = performDriverClustering(
-                employees, elderlys, distanceMatrix, company
+                employees, elderlys, distanceMatrix, company, requestDispatchDTO
         );
 
         List<AssignmentResponseDTO> results = new ArrayList<>();
@@ -465,7 +463,6 @@ public class DispatchServiceV3 {
                     requestDispatchDTO.dispatchType()
             ));
 
-            // 나머지 코드는 동일...
             List<EmployeeDTO> remainingEmployees = employees.stream()
                     .filter(e -> !e.isDriver())
                     .collect(Collectors.toList());
