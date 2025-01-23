@@ -34,7 +34,6 @@ public class ChromosomeV3 implements Serializable {
     public ChromosomeV3(List<CoupleRequestDTO> couples, List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                         Map<Integer, List<Integer>> fixedAssignments) throws Exception {
 
-        int numEmployees = employees.size();
         int totalElderly = elderly.size();
 
         int maximumCapacity = employees.stream().mapToInt(employee -> employee.maximumCapacity()).sum();
