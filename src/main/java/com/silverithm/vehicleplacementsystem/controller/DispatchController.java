@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
+import com.silverithm.vehicleplacementsystem.service.DispatchServiceV6;
 import com.silverithm.vehicleplacementsystem.service.SSEService;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -47,6 +48,9 @@ public class DispatchController {
     private DispatchServiceV4 dispatchServiceV5;
 
     @Autowired
+    private DispatchServiceV6 dispatchServiceV6;
+
+    @Autowired
     private SSEService sseService;
 
     @Autowired
@@ -79,7 +83,7 @@ public class DispatchController {
                 throw new CustomException("CPU 사용량이 높아 배차 처리를 중단합니다.", HttpStatus.SERVICE_UNAVAILABLE);
             }
 
-            List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignmentsV2(requestDispatchDTO, jobId);
+            List<AssignmentResponseDTO> result = dispatchServiceV6.getOptimizedAssignmentsV2(requestDispatchDTO, jobId);
 
             // 결과 메시지 생성
             Message responseMessage = MessageBuilder
