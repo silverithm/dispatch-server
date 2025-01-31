@@ -311,6 +311,12 @@ public class DispatchServiceV6 {
                         driverTotalTimes.get(driver) / 60,
                         driverTotalTimes.get(driver) % 60));
 
+        if (totalAssigned < elderlys.size()) {
+            log.info("Driver clustering completed. Remaining elderly for genetic algorithm: {}",
+                    elderlys.size() - totalAssigned);
+        }
+
+
         return allRoutes.stream()
                 .map(route -> route.stream().mapToInt(Integer::intValue).toArray())
                 .toArray(int[][]::new);
