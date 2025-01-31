@@ -42,6 +42,7 @@ public class DispatchServiceV6 {
     private final SSEService sseService;
     private final DispatchHistoryService dispatchHistoryService;
     private final OsrmService osrmService;
+    private final KakaoMapApiService kakaoMapApiService;
 
     private String key;
     private String kakaoKey;
@@ -50,7 +51,7 @@ public class DispatchServiceV6 {
     public DispatchServiceV6(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                              LinkDistanceRepository linkDistanceRepository,
                              SSEService sseService, DispatchHistoryService dispatchHistoryService,
-                             OsrmService osrmService
+                             OsrmService osrmService, KakaoMapApiService kakaoMapApiService
     ) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
@@ -58,59 +59,7 @@ public class DispatchServiceV6 {
         this.kakaoKey = kakaoKey;
         this.dispatchHistoryService = dispatchHistoryService;
         this.osrmService = osrmService;
-    }
-
-    public KakaoMapApiResponseDTO getDistanceTotalTimeWithTmapApi(Location startAddress,
-                                                                  Location destAddress) throws NullPointerException {
-
-        String distanceString = "0";
-        String durationString = "0";
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-
-            // HTTP 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "KakaoAK " + kakaoKey);
-
-            // HTTP 엔터티 생성 (헤더 포함)
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            // 파라미터 설정
-            String origin = startAddress.getLongitude() + "," + startAddress.getLatitude();
-            String destination = destAddress.getLongitude() + "," + destAddress.getLatitude();
-            String waypoints = "";
-            String priority = "DISTANCE";
-            String carFuel = "GASOLINE";
-            boolean carHipass = false;
-            boolean alternatives = false;
-            boolean roadDetails = false;
-
-            // URL에 파라미터 추가
-            String url = "https://apis-navi.kakaomobility.com/v1/directions" + "?origin=" + origin + "&destination="
-                    + destination
-                    + "&waypoints=" + waypoints + "&priority=" + priority + "&car_fuel=" + carFuel
-                    + "&car_hipass=" + carHipass + "&alternatives=" + alternatives + "&road_details=" + roadDetails;
-
-            // GET 요청 보내기
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            // result_code가 104이면 0 반환
-            if (response.getBody().contains("\"result_code\":104")) {
-                return new KakaoMapApiResponseDTO(0, 0); // 출발지와 도착지가 너무 가까운 경우 0 반환
-            }
-
-            distanceString = response.getBody().split("\"duration\":")[1].split("}")[0].trim();
-            durationString = response.getBody().split("\"distance\":")[1].split(",")[0].trim();
-
-        } catch (NullPointerException e) {
-            throw new NullPointerException("[ERROR] KAKAOMAP API 요청에 실패하였습니다.");
-        }
-
-        log.info("Tmap API distance :  " + distanceString);
-
-        return new KakaoMapApiResponseDTO(Integer.parseInt(durationString),
-                Integer.parseInt(distanceString)); // 문자열을 정수형으로 변환
-
+        this.kakaoMapApiService = kakaoMapApiService;
     }
 
 
@@ -176,7 +125,7 @@ public class DispatchServiceV6 {
         }
 
         int TIME_LIMIT = requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_IN
-                || requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_OUT ? 50000 : 2300;
+                || requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_OUT ? 30000 : 2600;
 
         Map<EmployeeDTO, Integer> driverTotalTimes = new HashMap<>();
         Map<EmployeeDTO, Integer> driverAssignedCounts = new HashMap<>();
@@ -254,47 +203,72 @@ public class DispatchServiceV6 {
             }
         }
 
-        // 2단계: 남은 인원을 기존 운전원의 남은 공간에 배정
         if (!availableElderly.isEmpty()) {
             log.info("Attempting to fill remaining capacity for existing drivers with {} elderly",
                     availableElderly.size());
 
-            for (EmployeeDTO driver : drivers) {
-                // 현재 운전원의 총 배정된 인원 확인
-                int currentTotal = driverAssignedCounts.get(driver);
-                int remainingCapacity = driver.maximumCapacity() - currentTotal;
+            // 비운전원의 총 처리 가능 인원 계산
+            int nonDriverCapacity = employees.stream()
+                    .filter(emp -> !emp.isDriver())
+                    .mapToInt(EmployeeDTO::maximumCapacity)
+                    .sum();
 
-                if (remainingCapacity <= 0 || availableElderly.isEmpty()) {
-                    continue;
-                }
+            // 현재 배정된 인원과 남은 인원 계산
+            int remainingElderly = availableElderly.size();
 
-                // 마지막 route 가져오기
-                List<List<Integer>> driverCurrentRoutes = driverRoutes.get(driver);
-                List<Integer> lastRoute = driverCurrentRoutes.isEmpty() ? new ArrayList<>()
-                        : driverCurrentRoutes.get(driverCurrentRoutes.size() - 1);
+            // 추가로 운전원에게 배정해야 할 인원 계산 (음수면 0으로 처리)
+            int additionalRequired = Math.max(0, remainingElderly - nonDriverCapacity);
 
-                // 남은 수용 인원만큼 추가
-                int added = 0;
-                Iterator<ElderlyDistance> iterator = availableElderly.iterator();
-                while (iterator.hasNext() && added < remainingCapacity) {
-                    ElderlyDistance elderly = iterator.next();
-                    lastRoute.add(elderly.index);
-                    iterator.remove();
-                    added++;
-                }
+            log.info("Non-driver capacity: {}, Remaining elderly: {}, Additional required: {}",
+                    nonDriverCapacity, remainingElderly, additionalRequired);
 
-                if (added > 0) {
-                    // 기존 route가 없었다면 새로 추가
-                    if (driverCurrentRoutes.isEmpty()) {
-                        driverRoutes.get(driver).add(lastRoute);
+            if (additionalRequired > 0) {
+                // 추가 필요 인원만 운전원에게 배정
+                for (EmployeeDTO driver : drivers) {
+                    if (additionalRequired <= 0 || availableElderly.isEmpty()) {
+                        break;
                     }
-                    driverAssignedCounts.merge(driver, added, Integer::sum);
-                    totalAssigned += added;
-                    log.info("Added {} extra elderly to existing route for driver {} (total: {})",
-                            added, driver.id(), driverAssignedCounts.get(driver));
+
+                    int currentTotal = driverAssignedCounts.get(driver);
+                    int remainingCapacity = driver.maximumCapacity() - currentTotal;
+
+                    if (remainingCapacity <= 0) {
+                        continue;
+                    }
+
+                    // 현재 운전원에게 배정할 추가 인원 계산
+                    int toAssign = Math.min(remainingCapacity, additionalRequired);
+
+                    List<List<Integer>> driverCurrentRoutes = driverRoutes.get(driver);
+                    List<Integer> lastRoute = driverCurrentRoutes.isEmpty() ? new ArrayList<>()
+                            : driverCurrentRoutes.get(driverCurrentRoutes.size() - 1);
+
+                    int added = 0;
+                    Iterator<ElderlyDistance> iterator = availableElderly.iterator();
+                    while (iterator.hasNext() && added < toAssign) {
+                        ElderlyDistance elderly = iterator.next();
+                        lastRoute.add(elderly.index);
+                        iterator.remove();
+                        added++;
+                    }
+
+                    if (added > 0) {
+                        if (driverCurrentRoutes.isEmpty()) {
+                            driverRoutes.get(driver).add(lastRoute);
+                        }
+                        driverAssignedCounts.merge(driver, added, Integer::sum);
+                        totalAssigned += added;
+                        additionalRequired -= added;
+
+                        log.info("Added {} additional elderly to driver {} (total: {}, remaining to assign: {})",
+                                added, driver.id(), driverAssignedCounts.get(driver), additionalRequired);
+                    }
                 }
             }
+
+            log.info("Unassigned elderly for non-drivers: {}", availableElderly.size());
         }
+
 
         // 모든 route를 하나의 리스트로 합치기
         allRoutes = drivers.stream()
@@ -315,7 +289,6 @@ public class DispatchServiceV6 {
             log.info("Driver clustering completed. Remaining elderly for genetic algorithm: {}",
                     elderlys.size() - totalAssigned);
         }
-
 
         return allRoutes.stream()
                 .map(route -> route.stream().mapToInt(Integer::intValue).toArray())
@@ -422,81 +395,6 @@ public class DispatchServiceV6 {
             from++;
             to--;
         }
-    }
-
-    private int[][] assignDriversFirst(
-            List<EmployeeDTO> employees,
-            List<ElderlyDTO> elderlys,
-            Map<String, Map<String, Integer>> distanceMatrix,
-            DispatchType dispatchType
-    ) {
-        List<EmployeeDTO> drivers = employees.stream()
-                .filter(EmployeeDTO::isDriver)
-                .collect(Collectors.toList());
-
-        if (drivers.isEmpty()) {
-            return null;
-        }
-
-        final int TIME_LIMIT = 3600; // 1시간(3600초) 제한
-        List<List<Integer>> allRoutes = new ArrayList<>();
-        Set<Integer> assignedElderlyIndices = new HashSet<>();
-
-        // 모든 어르신과 회사 간의 거리를 계산하고 정렬
-        List<ElderlyWithDistance> elderlyDistances = new ArrayList<>();
-        for (int i = 0; i < elderlys.size(); i++) {
-            String elderlyId = "Elderly_" + elderlys.get(i).id();
-            int distanceOrDuration =
-                    dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT ?
-                            distanceMatrix.get("Company").get(elderlyId) :
-                            distanceMatrix.get("Company").get(elderlyId);
-            elderlyDistances.add(new ElderlyWithDistance(i, distanceOrDuration));
-        }
-
-        // 거리가 먼 순서대로 정렬
-        elderlyDistances.sort((a, b) -> Integer.compare(b.distance, a.distance));
-
-        // 각 운전원별로 배정
-        for (EmployeeDTO driver : drivers) {
-            List<Integer> currentRoute = new ArrayList<>();
-            String currentLocation = "Company";
-            int currentTime = 0;
-
-            // 가장 먼 거리의 어르신부터 배정 시도
-            for (ElderlyWithDistance elderly : elderlyDistances) {
-                if (assignedElderlyIndices.contains(elderly.index)) {
-                    continue;
-                }
-
-                String elderlyId = "Elderly_" + elderlys.get(elderly.index).id();
-                int timeToElderly = distanceMatrix.get(currentLocation).get(elderlyId);
-                int timeToCompany = distanceMatrix.get(elderlyId).get("Company");
-                int potentialTotalTime = currentTime + timeToElderly + timeToCompany;
-
-                // 시간 제한을 넘지 않고 운전원의 최대 수용 인원을 넘지 않는 경우에만 배정
-                if (potentialTotalTime <= TIME_LIMIT && currentRoute.size() < driver.maximumCapacity()) {
-                    currentRoute.add(elderly.index);
-                    currentTime = potentialTotalTime;
-                    currentLocation = elderlyId;
-                    assignedElderlyIndices.add(elderly.index);
-                }
-            }
-
-            if (!currentRoute.isEmpty()) {
-                // 경로 최적화
-                List<Integer> optimizedRoute = optimizeDriverRoute(
-                        currentRoute,
-                        distanceMatrix,
-                        elderlys
-                );
-                allRoutes.add(optimizedRoute);
-            }
-        }
-
-        // 결과를 2차원 배열로 변환
-        return allRoutes.stream()
-                .map(route -> route.stream().mapToInt(Integer::intValue).toArray())
-                .toArray(int[][]::new);
     }
 
     private List<Integer> optimizeDriverRoute(
@@ -733,20 +631,20 @@ public class DispatchServiceV6 {
 //                }
 //
 //            } else {
-            OsrmApiResponseDTO osrmApiResponseDTO = osrmService.getDistanceTotalTimeWithOsrmApi(
+            KakaoMapApiResponseDTO kakaoMapApiResponseDTO = kakaoMapApiService.getDistanceTotalTimeWithKakaoMapApi(
                     company.companyAddress(),
                     elderlys.get(i).homeAddress());
 //            log.info("{} : {} / {}", company, elderlys.get(i).homeAddressName(),
 //                    osrmApiResponseDTO.toString());
 
             if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
-                distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
+                distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.distance());
+                distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.distance());
             }
 
             if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
-                distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
+                distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.duration());
+                distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.duration());
             }
 
 //                linkDistanceRepository.save(
@@ -784,7 +682,7 @@ public class DispatchServiceV6 {
 //                    }
 //
 //                } else {
-                OsrmApiResponseDTO osrmApiResponseDTO = osrmService.getDistanceTotalTimeWithOsrmApi(
+                KakaoMapApiResponseDTO kakaoMapApiResponseDTO = kakaoMapApiService.getDistanceTotalTimeWithKakaoMapApi(
                         elderlys.get(i).homeAddress(),
                         elderlys.get(j).homeAddress());
 
@@ -792,13 +690,13 @@ public class DispatchServiceV6 {
 //                        osrmApiResponseDTO.toString());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.distance());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.distance());
                 }
 
                 if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.duration());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.duration());
                 }
 
 //                    linkDistanceRepository.save(
@@ -836,7 +734,7 @@ public class DispatchServiceV6 {
 //
 //                } else {
 
-                OsrmApiResponseDTO osrmApiResponseDTO = osrmService.getDistanceTotalTimeWithOsrmApi(
+                KakaoMapApiResponseDTO kakaoMapApiResponseDTO = kakaoMapApiService.getDistanceTotalTimeWithKakaoMapApi(
                         employees.get(i).homeAddress(),
                         elderlys.get(j).homeAddress());
 
@@ -844,13 +742,13 @@ public class DispatchServiceV6 {
 //                        osrmApiResponseDTO.toString());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.distance());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.distance());
                 }
 
                 if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponseDTO.duration());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponseDTO.duration());
                 }
 
 //                    linkDistanceRepository.save(
