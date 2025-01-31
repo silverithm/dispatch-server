@@ -39,6 +39,7 @@ public class ChromosomeV3 implements Serializable {
         int maximumCapacity = employees.stream().mapToInt(employee -> employee.maximumCapacity()).sum();
 
         if (maximumCapacity < totalElderly) {
+            log.info("maximumCapacity: " + maximumCapacity + ", totalElderly: " + totalElderly);
             throw new Exception("[ERROR] 배치 가능 인원을 초과하였습니다.");
         }
 

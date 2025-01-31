@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -184,100 +185,131 @@ public class DispatchServiceV6 {
             driverAssignedCounts.put(driver, 0);
         });
 
-        // 어르신들의 거리 정보를 미리 계산하고 정렬
-        List<ElderlyDistance> elderlyDistances = new ArrayList<>();
+        // 거리순으로 어르신 정렬
+        List<ElderlyDistance> availableElderly = new ArrayList<>();
         for (int i = 0; i < elderlys.size(); i++) {
             String elderlyId = "Elderly_" + elderlys.get(i).id();
             int distanceFromCompany = distanceMatrix.get("Company").get(elderlyId);
-            elderlyDistances.add(new ElderlyDistance(i, distanceFromCompany));
+            availableElderly.add(new ElderlyDistance(i, distanceFromCompany));
         }
-        // 거리가 먼 순서대로 정렬
-        elderlyDistances.sort((a, b) -> Integer.compare(b.distance, a.distance));
+        availableElderly.sort((a, b) -> Integer.compare(b.distance, a.distance));
 
-        Set<Integer> assignedElderlyIndices = new HashSet<>();
         List<List<Integer>> allRoutes = new ArrayList<>();
+        Map<EmployeeDTO, List<List<Integer>>> driverRoutes = new HashMap<>();
+        drivers.forEach(driver -> driverRoutes.put(driver, new ArrayList<>()));
 
-        int targetElderlyPerDriver = (int) Math.ceil((double) elderlys.size() / drivers.size());
-        log.info("Target elderly per driver: {}", targetElderlyPerDriver);
+        int totalAssigned = 0;
+        int attempts = 0;
+        int maxAttempts = drivers.size() * 3;
 
-        boolean canAssignMore = true;
-        while (canAssignMore && assignedElderlyIndices.size() < elderlys.size()) {
-            canAssignMore = false;
+        // 1단계: 시간 제한 내에서 최대한 배치 시도
+        while (attempts < maxAttempts && !availableElderly.isEmpty()) {
+            attempts++;
+            boolean assignedInThisRound = false;
 
-            // 가장 적은 수의 어르신이 배정된 운전원 선택
-            EmployeeDTO currentDriver = drivers.stream()
-                    .filter(d -> driverTotalTimes.get(d) < TIME_LIMIT)
-                    .min(Comparator
-                            .<EmployeeDTO>comparingInt(d -> driverAssignedCounts.get(d))
-                            .thenComparingInt(d -> driverTotalTimes.get(d)))
-                    .orElse(null);
-
-            if (currentDriver == null) break;
-
-            int totalDriverTime = driverTotalTimes.get(currentDriver);
-            int currentAssignedCount = driverAssignedCounts.get(currentDriver);
-
-            if (currentAssignedCount >= targetElderlyPerDriver) {
-                continue;
-            }
-
-            // 현재 경로 생성
-            List<Integer> currentTrip = new ArrayList<>();
-            String currentLocation = "Company";
-            int routeTime = 0;
-
-            // 배정되지 않은 가장 먼 거리의 어르신부터 시도
-            for (ElderlyDistance elderlyDist : elderlyDistances) {
-                if (assignedElderlyIndices.contains(elderlyDist.index)) {
+            for (EmployeeDTO driver : drivers) {
+                if (driverAssignedCounts.get(driver) >= driver.maximumCapacity()) {
                     continue;
                 }
 
-                String elderlyId = "Elderly_" + elderlys.get(elderlyDist.index).id();
-                int timeToElderly = distanceMatrix.get(currentLocation).get(elderlyId);
-                int timeToCompany = distanceMatrix.get(elderlyId).get("Company");
-                int potentialTotalTime = totalDriverTime + routeTime + timeToElderly + timeToCompany;
+                List<Integer> currentRoute = new ArrayList<>();
+                String currentLocation = "Company";
+                int routeTime = 0;
 
-                if (potentialTotalTime <= TIME_LIMIT && currentTrip.size() < currentDriver.maximumCapacity()) {
-                    currentTrip.add(elderlyDist.index);
-                    routeTime += timeToElderly;
-                    currentLocation = elderlyId;
-                    assignedElderlyIndices.add(elderlyDist.index);
+                Iterator<ElderlyDistance> iterator = availableElderly.iterator();
+                while (iterator.hasNext()) {
+                    ElderlyDistance elderly = iterator.next();
+                    String elderlyId = "Elderly_" + elderlys.get(elderly.index).id();
+                    int timeToElderly = distanceMatrix.get(currentLocation).get(elderlyId);
+                    int timeToCompany = distanceMatrix.get(elderlyId).get("Company");
+                    int potentialTotalTime = driverTotalTimes.get(driver) + routeTime + timeToElderly + timeToCompany;
 
-                    if (currentTrip.size() >= currentDriver.maximumCapacity()) {
-                        break;
+                    if (potentialTotalTime <= TIME_LIMIT &&
+                            currentRoute.size() < driver.maximumCapacity()) {
+                        currentRoute.add(elderly.index);
+                        routeTime += timeToElderly;
+                        currentLocation = elderlyId;
+                        iterator.remove();
+                        assignedInThisRound = true;
                     }
+                }
+
+                if (!currentRoute.isEmpty()) {
+                    routeTime += distanceMatrix.get(currentLocation).get("Company");
+                    driverTotalTimes.put(driver, driverTotalTimes.get(driver) + routeTime);
+                    driverAssignedCounts.merge(driver, currentRoute.size(), Integer::sum);
+                    totalAssigned += currentRoute.size();
+
+                    List<Integer> optimizedRoute = optimizeRoute(currentRoute, distanceMatrix, elderlys, company);
+                    driverRoutes.get(driver).add(optimizedRoute);
+
+                    log.info("Added route for driver {} with {} elderly (total: {}) and time {}s",
+                            driver.id(), currentRoute.size(),
+                            driverAssignedCounts.get(driver), routeTime);
                 }
             }
 
-            if (!currentTrip.isEmpty()) {
-                routeTime += distanceMatrix.get(currentLocation).get("Company");
-                driverTotalTimes.put(currentDriver, totalDriverTime + routeTime);
-                driverAssignedCounts.merge(currentDriver, currentTrip.size(), Integer::sum);
-
-                // 경로 최적화
-                List<Integer> optimizedRoute = optimizeRoute(currentTrip, distanceMatrix, elderlys, company);
-                allRoutes.add(optimizedRoute);
-
-                log.info("Added route for driver {} with {} elderly (total: {}) and time {}s",
-                        currentDriver.id(), currentTrip.size(),
-                        driverAssignedCounts.get(currentDriver), routeTime);
-
-                canAssignMore = true;
+            if (!assignedInThisRound) {
+                break;
             }
         }
 
-        log.info("Clustering completed with {} routes", allRoutes.size());
+        // 2단계: 남은 인원을 기존 운전원의 남은 공간에 배정
+        if (!availableElderly.isEmpty()) {
+            log.info("Attempting to fill remaining capacity for existing drivers with {} elderly",
+                    availableElderly.size());
+
+            for (EmployeeDTO driver : drivers) {
+                // 현재 운전원의 총 배정된 인원 확인
+                int currentTotal = driverAssignedCounts.get(driver);
+                int remainingCapacity = driver.maximumCapacity() - currentTotal;
+
+                if (remainingCapacity <= 0 || availableElderly.isEmpty()) {
+                    continue;
+                }
+
+                // 마지막 route 가져오기
+                List<List<Integer>> driverCurrentRoutes = driverRoutes.get(driver);
+                List<Integer> lastRoute = driverCurrentRoutes.isEmpty() ? new ArrayList<>()
+                        : driverCurrentRoutes.get(driverCurrentRoutes.size() - 1);
+
+                // 남은 수용 인원만큼 추가
+                int added = 0;
+                Iterator<ElderlyDistance> iterator = availableElderly.iterator();
+                while (iterator.hasNext() && added < remainingCapacity) {
+                    ElderlyDistance elderly = iterator.next();
+                    lastRoute.add(elderly.index);
+                    iterator.remove();
+                    added++;
+                }
+
+                if (added > 0) {
+                    // 기존 route가 없었다면 새로 추가
+                    if (driverCurrentRoutes.isEmpty()) {
+                        driverRoutes.get(driver).add(lastRoute);
+                    }
+                    driverAssignedCounts.merge(driver, added, Integer::sum);
+                    totalAssigned += added;
+                    log.info("Added {} extra elderly to existing route for driver {} (total: {})",
+                            added, driver.id(), driverAssignedCounts.get(driver));
+                }
+            }
+        }
+
+        // 모든 route를 하나의 리스트로 합치기
+        allRoutes = drivers.stream()
+                .flatMap(driver -> driverRoutes.get(driver).stream())
+                .collect(Collectors.toList());
+
+        log.info("Clustering completed with {} routes, {} elderly assigned (total: {})",
+                allRoutes.size(), totalAssigned, elderlys.size());
+
         drivers.forEach(driver ->
                 log.info("Driver {} final stats - Count: {}, Time: {}m {}s",
                         driver.id(),
                         driverAssignedCounts.get(driver),
                         driverTotalTimes.get(driver) / 60,
                         driverTotalTimes.get(driver) % 60));
-
-        if (allRoutes.isEmpty()) {
-            log.warn("No routes were created during clustering!");
-            return null;
-        }
 
         return allRoutes.stream()
                 .map(route -> route.stream().mapToInt(Integer::intValue).toArray())
