@@ -522,13 +522,17 @@ public class DispatchServiceV6 {
                         Collections.nCopies(driverAssignedGenes.length, 0.0)
                 );
 
-                results.addAll(createResult(
+                List<AssignmentResponseDTO> createdResult = createResult(
                         driverAssignments,
                         elderlys,
                         driverChromosome,
                         departureTimes,
                         requestDispatchDTO.dispatchType()
-                ));
+                );
+
+                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time));
+
+                results.addAll(createdResult);
 
                 // 운전원 배정 후 남은 어르신들만 필터링
                 elderlys = elderlys.stream()
@@ -559,13 +563,17 @@ public class DispatchServiceV6 {
                 ChromosomeV3 bestChromosome = chromosomes.get(0);
                 List<Double> departureTimesResult = bestChromosome.getDepartureTimes();
 
-                results.addAll(createResult(
+                List<AssignmentResponseDTO> createdResult = createResult(
                         nonDriverEmployees,
                         elderlys,
                         bestChromosome,
                         departureTimesResult,
                         requestDispatchDTO.dispatchType()
-                ));
+                );
+
+                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time));
+
+                results.addAll(createdResult);
             }
         }
 
