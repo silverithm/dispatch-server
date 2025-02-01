@@ -474,7 +474,6 @@ public class DispatchServiceV6 {
         }
     }
 
-    // getOptimizedAssignmentsV2 메소드 수정
     public List<AssignmentResponseDTO> getOptimizedAssignmentsV2(RequestDispatchDTO requestDispatchDTO, String jobId)
             throws Exception {
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
@@ -482,6 +481,7 @@ public class DispatchServiceV6 {
         List<CoupleRequestDTO> couples = requestDispatchDTO.couples();
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
+        List<AssignmentResponseDTO> results = new ArrayList<>();
 
         sseService.notify(jobId, 5);
 
@@ -491,62 +491,63 @@ public class DispatchServiceV6 {
 
         sseService.notify(jobId, 15);
 
-        // 운전원 우선 배정 실행
-        int[][] driverAssignedGenes = performDriverClustering(
-                employees, elderlys, distanceMatrix, company, requestDispatchDTO
-        );
-        List<AssignmentResponseDTO> results = new ArrayList<>();
+        // 운전원 존재 여부 확인
+        List<EmployeeDTO> drivers = employees.stream()
+                .filter(EmployeeDTO::isDriver)
+                .collect(Collectors.toList());
 
-        log.info("Driver assigned genes : {}", driverAssignedGenes);
-
-        results.forEach(result -> {
-            log.info("result : {}", result);
-        });
-
-        if (driverAssignedGenes != null && driverAssignedGenes.length > 0) {
-            Set<Long> assignedElderlyIds = new HashSet<>();
-            List<EmployeeDTO> driverAssignments = new ArrayList<>();
-
-            // 운전원 배정 결과 처리
-            List<EmployeeDTO> drivers = employees.stream()
-                    .filter(EmployeeDTO::isDriver)
-                    .collect(Collectors.toList());
-
-            for (int i = 0; i < driverAssignedGenes.length; i++) {
-                EmployeeDTO driver = drivers.get(i % drivers.size());
-                driverAssignments.add(driver);
-
-                for (int elderlyIdx : driverAssignedGenes[i]) {
-                    assignedElderlyIds.add(elderlys.get(elderlyIdx).id());
-                }
-            }
-
-            ChromosomeV3 driverChromosome = new ChromosomeV3(driverAssignedGenes);
-            List<Double> departureTimes = new ArrayList<>(
-                    Collections.nCopies(driverAssignedGenes.length, 0.0)
+        if (!drivers.isEmpty()) {
+            // 운전원이 있는 경우에만 운전원 우선 배정 실행
+            int[][] driverAssignedGenes = performDriverClustering(
+                    employees, elderlys, distanceMatrix, company, requestDispatchDTO
             );
 
-            results.addAll(createResult(
-                    driverAssignments,
-                    elderlys,
-                    driverChromosome,
-                    departureTimes,
-                    requestDispatchDTO.dispatchType()
-            ));
+            log.info("Driver assigned genes : {}", driverAssignedGenes);
 
-            // 남은 직원과 어르신 처리
-            List<EmployeeDTO> remainingEmployees = employees.stream()
+            if (driverAssignedGenes != null && driverAssignedGenes.length > 0) {
+                Set<Long> assignedElderlyIds = new HashSet<>();
+                List<EmployeeDTO> driverAssignments = new ArrayList<>();
+
+                // 운전원 배정 결과 처리
+                for (int i = 0; i < driverAssignedGenes.length; i++) {
+                    EmployeeDTO driver = drivers.get(i % drivers.size());
+                    driverAssignments.add(driver);
+
+                    for (int elderlyIdx : driverAssignedGenes[i]) {
+                        assignedElderlyIds.add(elderlys.get(elderlyIdx).id());
+                    }
+                }
+
+                ChromosomeV3 driverChromosome = new ChromosomeV3(driverAssignedGenes);
+                List<Double> departureTimes = new ArrayList<>(
+                        Collections.nCopies(driverAssignedGenes.length, 0.0)
+                );
+
+                results.addAll(createResult(
+                        driverAssignments,
+                        elderlys,
+                        driverChromosome,
+                        departureTimes,
+                        requestDispatchDTO.dispatchType()
+                ));
+
+                // 운전원 배정 후 남은 어르신들만 필터링
+                elderlys = elderlys.stream()
+                        .filter(e -> !assignedElderlyIds.contains(e.id()))
+                        .collect(Collectors.toList());
+            }
+        }
+
+        // 운전원이 없거나, 운전원 배정 후 남은 직원과 어르신 처리
+        if (!elderlys.isEmpty()) {
+            List<EmployeeDTO> nonDriverEmployees = employees.stream()
                     .filter(e -> !e.isDriver())
                     .collect(Collectors.toList());
 
-            List<ElderlyDTO> remainingElderlys = elderlys.stream()
-                    .filter(e -> !assignedElderlyIds.contains(e.id()))
-                    .collect(Collectors.toList());
-
-            if (!remainingEmployees.isEmpty() && !remainingElderlys.isEmpty()) {
+            if (!nonDriverEmployees.isEmpty()) {
                 GeneticAlgorithmV3 geneticAlgorithm = new GeneticAlgorithmV3(
-                        remainingEmployees,
-                        remainingElderlys,
+                        nonDriverEmployees,
+                        elderlys,
                         couples,
                         fixedAssignments,
                         sseService
@@ -560,8 +561,8 @@ public class DispatchServiceV6 {
                 List<Double> departureTimesResult = bestChromosome.getDepartureTimes();
 
                 results.addAll(createResult(
-                        remainingEmployees,
-                        remainingElderlys,
+                        nonDriverEmployees,
+                        elderlys,
                         bestChromosome,
                         departureTimesResult,
                         requestDispatchDTO.dispatchType()
