@@ -125,7 +125,7 @@ public class DispatchServiceV6 {
         }
 
         int TIME_LIMIT = requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_IN
-                || requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_OUT ? 30000 : 2600;
+                || requestDispatchDTO.dispatchType() == DispatchType.DISTANCE_OUT ? 30000 : 3600;
 
         Map<EmployeeDTO, Integer> driverTotalTimes = new HashMap<>();
         Map<EmployeeDTO, Integer> driverAssignedCounts = new HashMap<>();
@@ -156,6 +156,7 @@ public class DispatchServiceV6 {
             attempts++;
             boolean assignedInThisRound = false;
 
+            // 가장 멀리 있는 어르신부터 처리하기 위해 드라이버들을 순회
             for (EmployeeDTO driver : drivers) {
                 if (driverAssignedCounts.get(driver) >= driver.maximumCapacity()) {
                     continue;
@@ -165,15 +166,24 @@ public class DispatchServiceV6 {
                 String currentLocation = "Company";
                 int routeTime = 0;
 
+                // 가장 먼 거리의 어르신을 먼저 시도
                 Iterator<ElderlyDistance> iterator = availableElderly.iterator();
                 while (iterator.hasNext()) {
                     ElderlyDistance elderly = iterator.next();
                     String elderlyId = "Elderly_" + elderlys.get(elderly.index).id();
+
+                    // 시간 제한을 체크하기 전에 거리가 특정 임계값 이상인 경우 우선 배정 시도
+                    int distanceFromCompany = distanceMatrix.get("Company").get(elderlyId);
+                    boolean isPriorityElderly = distanceFromCompany > TIME_LIMIT * 0.7; // 예: 70% 이상 거리는 우선 배정
+
                     int timeToElderly = distanceMatrix.get(currentLocation).get(elderlyId);
                     int timeToCompany = distanceMatrix.get(elderlyId).get("Company");
                     int potentialTotalTime = driverTotalTimes.get(driver) + routeTime + timeToElderly + timeToCompany;
 
-                    if (potentialTotalTime <= TIME_LIMIT &&
+                    // 우선순위 어르신이면 시간 제한을 좀 더 여유있게 적용
+                    int effectiveTimeLimit = isPriorityElderly ? (int)(TIME_LIMIT * 1.1) : TIME_LIMIT;
+
+                    if ((potentialTotalTime <= effectiveTimeLimit || isPriorityElderly) &&
                             currentRoute.size() < driver.maximumCapacity()) {
                         currentRoute.add(elderly.index);
                         routeTime += timeToElderly;
