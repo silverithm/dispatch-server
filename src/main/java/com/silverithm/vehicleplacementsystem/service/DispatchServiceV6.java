@@ -530,7 +530,7 @@ public class DispatchServiceV6 {
                         requestDispatchDTO.dispatchType()
                 );
 
-                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time));
+                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time).reversed());
 
                 results.addAll(createdResult);
 
@@ -571,14 +571,13 @@ public class DispatchServiceV6 {
                         requestDispatchDTO.dispatchType()
                 );
 
-                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time));
+                createdResult.sort(Comparator.comparingInt(AssignmentResponseDTO::time).reversed());
 
                 results.addAll(createdResult);
             }
         }
 
         sseService.notify(jobId, 95);
-        results.sort((a, b) -> Integer.compare(b.time(), a.time()));
         sseService.notify(jobId, 100);
         sseService.notifyResult(jobId, results);
 
