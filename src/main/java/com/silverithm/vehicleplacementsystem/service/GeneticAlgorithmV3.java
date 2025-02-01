@@ -323,23 +323,17 @@ public class GeneticAlgorithmV3 {
         if (dispatchType.equals(DispatchType.DISTANCE_OUT) || dispatchType.equals(DispatchType.DURATION_OUT)) {
             for (int i = 0; i < chromosome.getGenes().length; i++) {
                 double departureTime = 0.0;
+                String company = "Company";
+                departureTime += distanceMatrix.get(company)
+                        .get("Elderly_" + elderlys.get(chromosome.getGenes()[i][0]).id());
+
                 for (int j = 0; j < chromosome.getGenes()[i].length - 1; j++) {
-                    String company = "Company";
 
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j]).id();
                     String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j + 1]).id();
-
-                    if (j == 0) {
-                        departureTime += distanceMatrix.get(company)
-                                .get("Elderly_" + elderlys.get(chromosome.getGenes()[i][0]).id());
-                    }
-
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
-                                chromosome.getGenes()[i][chromosome.getGenes()[i].length - 1]).id())
-                        .get("Employee_" + employees.get(i).id());
 
                 if (employees.get(i).isDriver()) {
                     departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
@@ -362,17 +356,6 @@ public class GeneticAlgorithmV3 {
                 String company = "Company";
                 double departureTime = 0.0;
 
-                for (int j = 0; j < chromosome.getGenes()[i].length - 1; j++) {
-                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j]).id();
-                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j + 1]).id();
-                    if (j == 0) {
-                        departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
-                                .get("Elderly_" + elderlys.get(chromosome.getGenes()[i][0]).id());
-                    }
-
-                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
-                }
-
                 if (employees.get(i).isDriver()) {
                     departureTime += distanceMatrix.get("Company")
                             .get("Elderly_" + elderlys.get(chromosome.getGenes()[i][0]).id());
@@ -382,6 +365,13 @@ public class GeneticAlgorithmV3 {
                     departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
                             .get("Elderly_" + elderlys.get(chromosome.getGenes()[i][0]).id());
                 }
+
+                for (int j = 0; j < chromosome.getGenes()[i].length - 1; j++) {
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j]).id();
+                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes()[i][j + 1]).id();
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                }
+
 
                 departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
                         chromosome.getGenes()[i][chromosome.getGenes()[i].length - 1]).id()).get(company);
