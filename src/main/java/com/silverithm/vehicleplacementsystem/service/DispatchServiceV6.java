@@ -181,7 +181,7 @@ public class DispatchServiceV6 {
                     int potentialTotalTime = driverTotalTimes.get(driver) + routeTime + timeToElderly + timeToCompany;
 
                     // 우선순위 어르신이면 시간 제한을 좀 더 여유있게 적용
-                    int effectiveTimeLimit = isPriorityElderly ? (int)(TIME_LIMIT * 1.1) : TIME_LIMIT;
+                    int effectiveTimeLimit = isPriorityElderly ? (int) (TIME_LIMIT * 1.1) : TIME_LIMIT;
 
                     if ((potentialTotalTime <= effectiveTimeLimit || isPriorityElderly) &&
                             currentRoute.size() < driver.maximumCapacity()) {
@@ -278,7 +278,6 @@ public class DispatchServiceV6 {
 
             log.info("Unassigned elderly for non-drivers: {}", availableElderly.size());
         }
-
 
         // 모든 route를 하나의 리스트로 합치기
         allRoutes = drivers.stream()
@@ -571,6 +570,7 @@ public class DispatchServiceV6 {
         }
 
         sseService.notify(jobId, 95);
+        results.sort((a, b) -> Integer.compare(b.time(), a.time()));
         sseService.notify(jobId, 100);
         sseService.notifyResult(jobId, results);
 
