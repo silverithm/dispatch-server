@@ -68,7 +68,7 @@ public class DispatchController {
 
     private static final double CPU_THRESHOLD = 80.0;
 
-    @RabbitListener(queues = "dispatch.queue")
+    @RabbitListener(queues = "dispatch.queue.temp")
     public void handleDispatchRequest(RequestDispatchDTO requestDispatchDTO, Message message, Channel channel)
             throws IOException {
         log.info("Received message: {}", requestDispatchDTO);
