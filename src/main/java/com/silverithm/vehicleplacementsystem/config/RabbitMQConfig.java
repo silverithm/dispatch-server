@@ -38,6 +38,13 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    @Bean
+    public Queue dispatchQueueTemp() {
+        return QueueBuilder.durable("dispatch.queue.temp")
+                .withArgument("x-dead-letter-exchange", "dispatch.dlx")
+                .withArgument("x-dead-letter-routing-key", "dispatch.dead")
+                .build();
+    }
 
     @Bean
     public Queue responseQueue() {
@@ -75,6 +82,13 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    Binding queueTempBinding() {
+        return BindingBuilder.bind(dispatchQueueTemp())
+                .to(exchange())
+                .with("dispatch.route.temp");
+    }
+
+    @Bean
     public Jackson2JsonMessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
@@ -100,8 +114,6 @@ public class RabbitMQConfig {
 
     @Bean
     public ConnectionFactory connectionFactory() {
-
-
         com.rabbitmq.client.ConnectionFactory rabbitFactory = new com.rabbitmq.client.ConnectionFactory();
         rabbitFactory.setMaxInboundMessageBodySize(1545270062);
         rabbitFactory.setHost(host);
@@ -112,8 +124,4 @@ public class RabbitMQConfig {
         CachingConnectionFactory factory = new CachingConnectionFactory(rabbitFactory);
         return factory;
     }
-
-
-
-
 }
