@@ -49,8 +49,11 @@ public class WebSecurityConfigure {
             config.setAllowedHeaders(Collections.singletonList("*"));
             config.setAllowedMethods(Collections.singletonList("*"));
             config.setAllowedOriginPatterns(Collections.singletonList("http://localhost:3000"));
-            config.setAllowedOrigins(Collections.singletonList("https://silverithm.netlify.app/"));
-            config.setAllowedOrigins(Collections.singletonList("https://www.silverithm.co.kr/"));
+            // 여러 origin을 한 번에 설정
+            config.setAllowedOrigins(java.util.Arrays.asList(
+                "https://silverithm.netlify.app",
+                "https://www.silverithm.co.kr"
+            ));
             config.setAllowCredentials(true);
             return config;
         };
