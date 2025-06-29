@@ -83,7 +83,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'
+          cpus: '1.5'
     environment:
       LOG_PATH: /logs
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
@@ -97,8 +97,8 @@ services:
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
         -XX:+UseG1GC
-        -XX:ParallelGCThreads=10
-        -XX:ConcGCThreads=2
+        -XX:ParallelGCThreads=2
+        -XX:ConcGCThreads=1
         -XX:MaxGCPauseMillis=200
     depends_on:
       - db
